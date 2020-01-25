@@ -1,0 +1,10 @@
+--- /usr/local/lib/python3.7/dist-packages/torch/nn/modules/dropout.py
++++ /usr/local/lib/python3.7/dist-packages/torch/nn/modules/dropout.py
+@@ -31,6 +31,7 @@
+         detectors: https://arxiv.org/abs/1207.0580
+     """
+ 
++    @weak_script_method
+     def forward(self, input):
+         return F.dropout(input, self.p, self.training, self.inplace)
+ 

@@ -1,0 +1,17 @@
+--- /home/mohamed/cross_domain_model/models/models.py
++++ /home/mohamed/cross_domain_model/models/models.py
+@@ -1,6 +1,6 @@
+ class lstm_fe(nn.Module):
+     def __init__(self, input_dim, hid_dim, n_layers, dropout, bidirectional):
+-        super(lstm_fe, self).__init__()
++        super(lstm_fe,self).__init__()
+ 
+         self.input_dim = input_dim
+         self.hid_dim = hid_dim
+@@ -21,5 +21,5 @@
+         features = outputs[:, -1:].squeeze()
+ 
+         # outputs are always from the top hidden layer
+-        return features  # , hidden, cell
++        return features#, hidden, cell
+ 

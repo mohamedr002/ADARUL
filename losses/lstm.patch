@@ -1,0 +1,14 @@
+--- /home/mohamed/cross_domain_model/models/models.py
++++ /home/mohamed/cross_domain_model/models/models.py
+@@ -5,11 +5,9 @@
+         self.dropout = drop
+         self.predictor = lstm_regressor((hid_dim + hid_dim * bid), self.dropout)
+         self.device = device
+-
+     def param_init_net(m):
+         for name, param in m.named_parameters():
+             nn.init.uniform_(param.data, -0.08, 0.08)
+-
+     def forward(self, src):
+         # last hidden state of the encoder is used as the initial hidden state of the decoder
+         features = self.encoder(src)
