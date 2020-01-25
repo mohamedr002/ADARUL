@@ -69,7 +69,7 @@ def evaluate(model, test_dl, criterion, config):
             total_labels.append(labels)
 
             predicted_rul += (pred.squeeze().tolist())
-            truea_labels += labels.tolist()
+            true_labels += labels.tolist()
 
     model.train()
     return epoch_loss / len(test_dl), epoch_score, torch.cat(total_feas), torch.cat(total_labels),predicted_rul,true_labels
