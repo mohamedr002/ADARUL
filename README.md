@@ -1,6 +1,6 @@
 # Adversarial-Transfer-Learning-for-RUL
 
-This repo contains code of the paper, 	[Adversarial-Transfer-Learning-for-RUL]. It includes code for estimating remaining useful life machine under the assumption that training and testing are from different working environment (distirubtion). 
+This repo contains code of the paper **Adversarial-Transfer-Learning-for-RUL**. It includes code for estimating remaining useful life machine under the assumption that training and testing are from different working environment (distirubtion). 
 
 ### Dependencies
 This code requires the following:
