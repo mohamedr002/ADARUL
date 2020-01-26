@@ -40,7 +40,7 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 # Step 4: Instantiate Model Class
 # Step 5: Instantiate Loss Class
 # Step 6: Instantiate Optimizer Class
-# Step 7: Train Mode
+# Step 7: Train Model
 
 """Configureations"""
 params = {'window_length': 30, 'sequence_length': 30, 'batch_size': 10, 'input_dim': 14, 'src_pretrain': False,
@@ -53,7 +53,7 @@ my_dataset = torch.load(params['data_path'])
 # load model
 config = get_model_config('LSTM')
 def cross_domain_train(da_params,src_id,tgt_id,run_id):
-    var_epoch={'FD001':15,'FD002':10, 'FD003':20, 'FD004':20}
+    var_epoch={'FD001':1000,'FD002':500, 'FD003':1000, 'FD004':1000}
 
     print('Initializing model...')
     source_model = initlize(config)
@@ -63,7 +63,6 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     print('Load_source_target datasets...')
     src_train_dl, src_test_dl = create_dataset_full(my_dataset[src_id])
     tgt_train_dl, tgt_test_dl = create_dataset_full(my_dataset[tgt_id])
-
     print('Restore trained model...')
     # checkpoint = torch.load(f'./checkpoints//{config["model_name"]}/last_epoch_{src_id}_0_full.pt')
     checkpoint = torch.load(f'./checkpoints/{config["model_name"]}/pretrained_{config["model_name"]}_{src_id}.pt')
@@ -71,27 +70,30 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     source_model.eval()
     set_requires_grad(source_model, requires_grad=False)
     source_encoder = source_model.encoder
-
     # initialize target model
     target_model = initlize(config)
     target_model.load_state_dict(source_model.state_dict())
     target_encoder = target_model.encoder
-
     # discriminator network
     discriminator = dicriminator()
     #criterion
     criterion= RMSELoss()
     dis_critierion = nn.BCEWithLogitsLoss()
-    discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=1e-4,betas=(0.5, 0.5))
-    target_optim = torch.optim.Adam(target_encoder.parameters(), lr=1e-4,betas=(0.5, 0.5))
+    discriminator_optim = torch.optim.SGD(discriminator.parameters(), lr=1e-4,momentum=0.9,nesterov=True)
+    target_optim = torch.optim.SGD(target_encoder.parameters(), lr=1e-4, momentum=0.9,nesterov=True)
 
-    comment = (f'./runs/model={config["model_name"]} Scenario={src_id} to {tgt_id}')
+    comment = (f'./runs/model={config["model_name"]}_{src_id} to {tgt_id}_SGD')
     tb = SummaryWriter(comment)
+
+    print('=' * 89)
+    print(f'Cross Domain Scenario: {src_id}-->{tgt_id}')
+    print('=' * 89)
     for epoch in range(1, var_epoch[src_id] + 1):
         batch_iterator = zip(loop_iterable(src_train_dl), loop_iterable(tgt_train_dl))
         total_loss = 0
         total_accuracy = 0
         start_time = time.time()
+
         for _ in range(da_params['iterations']):#, leave=False):
             # Train discriminator
             set_requires_grad(target_encoder, requires_grad=False)
@@ -99,14 +101,11 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
             for _ in range(da_params['k_disc']):
                 (source_x, _), (target_x, _) = next(batch_iterator)
                 source_x, target_x = source_x.to(device), target_x.to(device)
-
                 source_features = source_encoder(source_x).view(source_x.shape[0], -1)
                 target_features = target_encoder(target_x).view(target_x.shape[0], -1)
-
                 discriminator_x = torch.cat([source_features, target_features])
                 discriminator_y = torch.cat([torch.ones(source_x.shape[0], device=device),
                                              torch.zeros(target_x.shape[0], device=device)])
-
                 preds = discriminator(discriminator_x).squeeze()
                 loss = dis_critierion(preds, discriminator_y)
 
@@ -123,17 +122,14 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
                 _, (target_x, _) = next(batch_iterator)
                 target_x = target_x.to(device)
                 target_features = target_encoder(target_x).view(target_x.shape[0], -1)
-
                 # flipped labels
                 discriminator_y = torch.ones(target_x.shape[0], device=device)
-
                 preds = discriminator(target_features).squeeze()
                 loss = dis_critierion(preds, discriminator_y)
 
                 target_optim.zero_grad()
                 loss.backward()
                 target_optim.step()
-
 
         mean_loss = total_loss / (da_params['iterations'] * da_params['k_disc'])
         mean_accuracy = total_accuracy / (da_params['iterations'] * da_params['k_disc'])
@@ -146,8 +142,22 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'Discriminator_loss:{mean_loss} \t Discriminator_accuracy{mean_accuracy}')
-
-
+        if epoch %100 == 0:
+            # Create the full target model and save it
+            target_model.encoder = target_encoder
+            target_model.predictor = source_model.predictor
+            src_only_loss, src_only_score, _, _, _, _ = evaluate(source_model, tgt_test_dl,criterion, config)
+            test_loss, test_score, _, _, _, _ = evaluate(target_model, tgt_test_dl, criterion, config)
+            print('=' * 89)
+            print('| Evaluate the model Performance |')
+            print('=' * 89)
+            print(f'Src_Only RMSE:{src_only_loss} \t Src_Only Score:{src_only_score}')
+            print(f'After DA RMSE:{test_loss} \t After DA Score:{test_score}')
+            print('=' * 89)
+            tb.add_scalar('Loss/SRC_only', src_only_loss, epoch)
+            tb.add_scalar('Loss/DA', test_loss, epoch)
+            tb.add_scalar('Score/SRC_only', src_only_score, epoch)
+            tb.add_scalar('Score/DA', test_score, epoch)
     #extract features to visualize
     # Create the full target model and save it
     target_model.encoder = target_encoder
@@ -155,18 +165,23 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
 
     src_only_loss, src_only_score, _, _, pred_labels,true_labels = evaluate(source_model, tgt_test_dl, criterion, config)
     test_loss, test_score, _, _, pred_labels_DA,true_labels_DA = evaluate(target_model, tgt_test_dl, criterion, config)
+    pred_labels=sorted(pred_labels, reverse=True)
 
-    fig1=plt.figure()
+    # Plotting the predicted and the True labels after training.
+    true_labels=sorted(true_labels, reverse=True)
+    pred_labels_DA=sorted(pred_labels_DA, reverse=True)
+    true_labels_DA=sorted(true_labels_DA, reverse=True)
+    fig1=plt.figure(1)
     plt.plot(pred_labels,label='pred labels')
     plt.plot(true_labels,label='true labels')
     plt.legend()
-    fig2=plt.figure()
+    fig2=plt.figure(2)
     plt.plot(pred_labels_DA,label='pred labels')
     plt.plot(true_labels_DA,label='true labels')
     plt.legend()
 
     # print the true and predicted labels
-    tb.add_figure('src_only',fig1)
+    tb.add_figure('Src_only',fig1)
     tb.add_figure('DA',fig2)
     print(f'Src_Only RMSE:{src_only_loss} \t Src_Only Score:{src_only_score}')
     print(f'After DA RMSE:{test_loss} \t After DA Score:{test_score}')
@@ -174,9 +189,7 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     tb.add_scalar('Loss/DA', test_loss, epoch)
     tb.add_scalar('Score/SRC_only', src_only_score, epoch)
     tb.add_scalar('Score/DA', test_score, epoch)
-
     # Visualize Embedding code
-
     # _, _, src_features, _, _, _ = evaluate(source_model, src_train_dl, criterion, config)
     # _, _, tgt_features, _, _, _ = evaluate(source_model, tgt_train_dl, criterion, config)
     # _, _, tgt_trained_features, _, _, _ = evaluate(target_model, tgt_train_dl, criterion,config)
@@ -184,8 +197,8 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     # tb.add_embedding(tgt_features)
     # tb.add_embedding(tgt_trained_features)
 
-
-    torch.save(target_model.state_dict(), f'checkpoints/DA_RUL/rul_da_{src_id}_to_{tgt_id}_{run_id}_final_2.pt')
+    # SGD results
+    torch.save(target_model.state_dict(), f'checkpoints/DA_RUL/rul_da_{src_id}_to_{tgt_id}_{run_id}_final_SGD.pt')
 
     return src_only_loss, src_only_score, test_loss, test_score
 
@@ -194,6 +207,7 @@ def main():
     da_params={'iterations':1,'epochs':25, 'k_disc':35, 'k_clf':1,'num_runs':1}
     df=pd.DataFrame()
     res = []
+    # pm = Symbol(u'±')
     full_res = []
     for src_id in ['FD001', 'FD002', 'FD003','FD004']:
         for tgt_id in ['FD001', 'FD002', 'FD003', 'FD004']:
@@ -208,8 +222,8 @@ def main():
 
                 loss_mean, loss_std = np.mean(np.array(total_loss)), np.std(np.array(total_loss))
                 score_mean, score_std = np.mean(np.array(total_score)), np.std(np.array(total_score))
-                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f} ± {loss_std:2.2f}'))
-                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f} ± {score_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f}±{loss_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f}±{score_std:2.2f}'))
                 full_res.append((f'{src_id}-->{tgt_id}', f'{loss_mean:2.2f}', f'{loss_std:2.2f}', f'{score_mean:6.2f}',
                                  f'{score_std:2.2f}'))
 
@@ -218,7 +232,7 @@ def main():
                 df = df.append(pd.Series(('std', 0, 0, 0, f'{loss_std:2.2f}', f'{score_std:2.2f}')), ignore_index=True)
     df = df.append(pd.DataFrame(res), ignore_index=True)
     df = df.append(pd.DataFrame(full_res), ignore_index=True)
-    df.to_csv('results/Final_epochs_diff_epochs_2.csv')
+    df.to_csv('results/Final_SGD.csv')
 main()
 print('Finished')
 print('Finished')

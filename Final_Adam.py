@@ -146,8 +146,14 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'Discriminator_loss:{mean_loss} \t Discriminator_accuracy{mean_accuracy}')
-
-
+        if epoch % 100==0:
+            # Create the full target model and save it
+            target_model.encoder = target_encoder
+            target_model.predictor = source_model.predictor
+            src_only_loss, src_only_score, _, _, _, _ = evaluate(source_model, tgt_test_dl,criterion, config)
+            test_loss, test_score, _, _, _, _ = evaluate(target_model, tgt_test_dl, criterion, config)
+            print(f'Src_Only RMSE:{src_only_loss} \t Src_Only Score:{src_only_score}')
+            print(f'After DA RMSE:{test_loss} \t After DA Score:{test_score}')
     #extract features to visualize
     # Create the full target model and save it
     target_model.encoder = target_encoder
@@ -155,6 +161,10 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
 
     src_only_loss, src_only_score, _, _, pred_labels,true_labels = evaluate(source_model, tgt_test_dl, criterion, config)
     test_loss, test_score, _, _, pred_labels_DA,true_labels_DA = evaluate(target_model, tgt_test_dl, criterion, config)
+    pred_labels=sorted(pred_labels, reverse=True)
+    true_labels=sorted(true_labels, reverse=True)
+    pred_labels_DA=sorted(pred_labels_DA, reverse=True)
+    true_labels_DA=sorted(true_labels_DA, reverse=True)
 
     fig1=plt.figure()
     plt.plot(pred_labels,label='pred labels')
@@ -166,7 +176,7 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     plt.legend()
 
     # print the true and predicted labels
-    tb.add_figure('src_only',fig1)
+    tb.add_figure('Src_only',fig1)
     tb.add_figure('DA',fig2)
     print(f'Src_Only RMSE:{src_only_loss} \t Src_Only Score:{src_only_score}')
     print(f'After DA RMSE:{test_loss} \t After DA Score:{test_score}')
@@ -185,7 +195,7 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     # tb.add_embedding(tgt_trained_features)
 
 
-    torch.save(target_model.state_dict(), f'checkpoints/DA_RUL/rul_da_{src_id}_to_{tgt_id}_{run_id}_final_2.pt')
+    torch.save(target_model.state_dict(), f'checkpoints/DA_RUL/rul_da_{src_id}_to_{tgt_id}_{run_id}_final_SGD.pt')
 
     return src_only_loss, src_only_score, test_loss, test_score
 
@@ -194,6 +204,7 @@ def main():
     da_params={'iterations':1,'epochs':25, 'k_disc':35, 'k_clf':1,'num_runs':1}
     df=pd.DataFrame()
     res = []
+    # pm = Symbol(u'±')
     full_res = []
     for src_id in ['FD001', 'FD002', 'FD003','FD004']:
         for tgt_id in ['FD001', 'FD002', 'FD003', 'FD004']:
@@ -208,8 +219,8 @@ def main():
 
                 loss_mean, loss_std = np.mean(np.array(total_loss)), np.std(np.array(total_loss))
                 score_mean, score_std = np.mean(np.array(total_score)), np.std(np.array(total_score))
-                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f} ± {loss_std:2.2f}'))
-                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f} ± {score_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f}±{loss_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f}±{score_std:2.2f}'))
                 full_res.append((f'{src_id}-->{tgt_id}', f'{loss_mean:2.2f}', f'{loss_std:2.2f}', f'{score_mean:6.2f}',
                                  f'{score_std:2.2f}'))
 
