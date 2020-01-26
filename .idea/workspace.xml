@@ -104,7 +104,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1579926464174</updated>
-      <workItem from="1579926465581" duration="10090000" />
+      <workItem from="1579926465581" duration="10777000" />
     </task>
     <servers />
   </component>
@@ -126,7 +126,7 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/wandb_logging.py</url>
+          <url>file://$PROJECT_DIR$/Final_Adam.py</url>
           <line>234</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
