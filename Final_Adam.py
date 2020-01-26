@@ -201,7 +201,7 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
 
 
 def main():
-    da_params={'iterations':1,'epochs':25, 'k_disc':35, 'k_clf':1,'num_runs':1}
+    da_params={'iterations':1,'epochs':25, 'k_disc':35, 'k_clf':1,'num_runs':5}
     df=pd.DataFrame()
     res = []
     # pm = Symbol(u'±')
@@ -219,8 +219,8 @@ def main():
 
                 loss_mean, loss_std = np.mean(np.array(total_loss)), np.std(np.array(total_loss))
                 score_mean, score_std = np.mean(np.array(total_score)), np.std(np.array(total_score))
-                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f}±{loss_std:2.2f}'))
-                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f}±{score_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f}', u"\u00B1", f'{loss_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f}', u"\u00B1", f' {score_std:2.2f}'))
                 full_res.append((f'{src_id}-->{tgt_id}', f'{loss_mean:2.2f}', f'{loss_std:2.2f}', f'{score_mean:6.2f}',
                                  f'{score_std:2.2f}'))
 

@@ -10,7 +10,7 @@
 # imports
 import torch
 from torch import nn
-#from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from tensorboardX import SummaryWriter
 import pandas as pd
 import argparse
@@ -25,6 +25,7 @@ from sklearn.exceptions import DataConversionWarning
 from models.models_config import get_model_config, initlize
 from models.models import dicriminator
 from data.mydataset import create_dataset, create_dataset_full
+
 # torch.nn.Module.dump_patches = True
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
@@ -41,15 +42,16 @@ warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 """Configureations"""
 params = {'window_length': 30, 'sequence_length': 30, 'batch_size': 10, 'input_dim': 14, 'src_pretrain': False,
           'data_path': r"../../../Deep Learning for RUL/data/processed_data/cmapps_train_test_cross_domain.pt",
-          'dropout': 0.5,  'lr': 1e-4}
-
+          'dropout': 0.5, 'lr': 1e-4}
 
 # load data
 my_dataset = torch.load(params['data_path'])
 # load model
 config = get_model_config('LSTM')
-def cross_domain_train(da_params,src_id,tgt_id,run_id):
-    var_epoch={'FD001':15,'FD002':10, 'FD003':20, 'FD004':20}
+
+
+def cross_domain_train(da_params, src_id, tgt_id, run_id):
+    var_epoch = {'FD001': 15, 'FD002': 10, 'FD003': 20, 'FD004': 20}
 
     print('Initializing model...')
     source_model = initlize(config)
@@ -75,11 +77,11 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
 
     # discriminator network
     discriminator = dicriminator()
-    #criterion
-    criterion= RMSELoss()
+    # criterion
+    criterion = RMSELoss()
     dis_critierion = nn.BCEWithLogitsLoss()
-    discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=1e-4,betas=(0.5, 0.5))
-    target_optim = torch.optim.Adam(target_encoder.parameters(), lr=1e-4,betas=(0.5, 0.5))
+    discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=1e-4, betas=(0.5, 0.5))
+    target_optim = torch.optim.Adam(target_encoder.parameters(), lr=1e-4, betas=(0.5, 0.5))
 
     comment = (f'./runs/model={config["model_name"]} Scenario={src_id} to {tgt_id}')
     tb = SummaryWriter(comment)
@@ -129,7 +131,6 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
                 loss.backward()
                 target_optim.step()
 
-
         mean_loss = total_loss / (da_params['iterations'] * da_params['k_disc'])
         mean_accuracy = total_accuracy / (da_params['iterations'] * da_params['k_disc'])
 
@@ -137,8 +138,8 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
         tb.add_scalar('Discriminator_loss', mean_loss, epoch)
         tb.add_scalar('Discriminator_accuracy', mean_accuracy, epoch)
 
-        #tb.add_embedding(source_features, metadata=src_id)
-        #tb.add_embedding(target_features,metadata=tgt_id)
+        # tb.add_embedding(source_features, metadata=src_id)
+        # tb.add_embedding(target_features,metadata=tgt_id)
 
         # Create the full target model and save it
         target_model.encoder = target_encoder
@@ -153,7 +154,7 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
         tb.add_scalar('Loss/DA', test_loss, epoch)
         tb.add_scalar('Score/SRC_only', src_only_score, epoch)
         tb.add_scalar('Score/DA', test_score, epoch)
-    #extract features to visualize
+    # extract features to visualize
     _, _, src_features, _ = evaluate(source_model, src_train_dl, criterion, config)
     _, _, tgt_features, _ = evaluate(source_model, tgt_train_dl, criterion, config)
     _, _, tgt_trained_features, _ = evaluate(target_model, tgt_train_dl, criterion, config)
@@ -161,7 +162,7 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
     # plot_tsne(src_features,tgt_trained_features,src_id,tgt_id,'after')
 
     tb.add_embedding(src_features, metadata=src_id)
-    tb.add_embedding(tgt_features ,metadata=tgt_id)
+    tb.add_embedding(tgt_features, metadata=tgt_id)
     tb.add_embedding(tgt_trained_features, metadata=tgt_id)
 
     # torch.save(target_model.state_dict(), f'checkpoints/DA_RUL/rul_da_{src_id}_to_{tgt_id}_{run_id}_final_dif_epochs_2.pt')
@@ -170,34 +171,39 @@ def cross_domain_train(da_params,src_id,tgt_id,run_id):
 
 
 def main():
-    da_params={'iterations':1,'epochs':25, 'k_disc':35, 'k_clf':1,'num_runs':10}
-    df=pd.DataFrame()
+    da_params = {'iterations': 1, 'epochs': 25, 'k_disc': 35, 'k_clf': 1, 'num_runs': 5}
+    df = pd.DataFrame()
     res = []
     full_res = []
-    for src_id in ['FD001', 'FD002', 'FD003','FD004']:
+    for src_id in ['FD001', 'FD002', 'FD003', 'FD004']:
         for tgt_id in ['FD001', 'FD002', 'FD003', 'FD004']:
             if src_id != tgt_id:
                 total_loss = []
                 total_score = []
                 for run_id in range(da_params['num_runs']):
-                    src_only_loss, src_only_score, test_loss, test_score = cross_domain_train(da_params,src_id,tgt_id,run_id)
-                    df = df.append(pd.Series((f'run_{run_id}', f'{src_id}-->{tgt_id}', src_only_loss,src_only_score, test_loss, test_score)), ignore_index=True)
+                    src_only_loss, src_only_score, test_loss, test_score = cross_domain_train(da_params, src_id, tgt_id,
+                                                                                              run_id)
+                    df = df.append(pd.Series((f'run_{run_id}', f'{src_id}-->{tgt_id}', src_only_loss, src_only_score,
+                                              test_loss, test_score)), ignore_index=True)
                     total_loss.append(test_loss)
                     total_score.append(test_score)
 
                 loss_mean, loss_std = np.mean(np.array(total_loss)), np.std(np.array(total_loss))
                 score_mean, score_std = np.mean(np.array(total_score)), np.std(np.array(total_score))
-                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f} ± {loss_std:2.2f}'))
-                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f} ± {score_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'RMSE', f'{loss_mean:2.2f}', u"\u00B1", f'{loss_std:2.2f}'))
+                res.append((f'{src_id}-->{tgt_id}', 'Score', f'{score_mean:2.2f}', u"\u00B1", f' {score_std:2.2f}'))
                 full_res.append((f'{src_id}-->{tgt_id}', f'{loss_mean:2.2f}', f'{loss_std:2.2f}', f'{score_mean:6.2f}',
                                  f'{score_std:2.2f}'))
 
-                df = df.append(pd.Series(('mean', 0,  f'{src_only_loss:6.2f}', f'{src_only_score:6.2f}', f'{loss_mean:6.2f}', f'{score_mean:6.2f}')),
+                df = df.append(pd.Series(('mean', 0, f'{src_only_loss:6.2f}', f'{src_only_score:6.2f}',
+                                          f'{loss_mean:6.2f}', f'{score_mean:6.2f}')),
                                ignore_index=True)
                 df = df.append(pd.Series(('std', 0, 0, 0, f'{loss_std:2.2f}', f'{score_std:2.2f}')), ignore_index=True)
     df = df.append(pd.DataFrame(res), ignore_index=True)
     df = df.append(pd.DataFrame(full_res), ignore_index=True)
     df.to_csv('results/Final_epochs_diff_epochs_2.csv')
+
+
 main()
 print('Finished')
 print('Finished')
