@@ -18,4 +18,5 @@ After downloading you can do the data preprocessing steps you can check this fil
 ### Usage
 - To run the code, we have tried the model using two optimizers, SGD with momentum `Final_SGD.py` and Adam optimizer `Final_Adam.py. The files will show the training results and then print the performance on test set.
 - You can also visualize the tensorboard results, using the notebook of `Results Visualization.ipynb`
+- Our reports results are based on 5 consecutive runs with calculating the mean and STD. 
 
