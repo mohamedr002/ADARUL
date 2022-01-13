@@ -24,3 +24,24 @@ After downloading you can do the data preprocessing steps you can check this fil
 - You can also visualize the tensorboard results, using the notebook of `Results Visualization.ipynb`
 - Our reported results are based on 5 consecutive runs with calculating the mean and STD. 
 
+
+## Citation
+If you found this work useful for you, please consider citing it.
+```
+@INPROCEEDINGS{9187053,
+  author={Ragab, Mohamed and Chen, Zhenghua and Wu, Min and Kwoh, Chee Keong and Li, Xiaoli},
+  booktitle={2020 IEEE International Conference on Prognostics and Health Management (ICPHM)}, 
+  title={Adversarial Transfer Learning for Machine Remaining Useful Life Prediction}, 
+  year={2020},
+  volume={},
+  number={},
+  pages={1-7},
+  doi={10.1109/ICPHM49022.2020.9187053}}
+```
+
+## Contact
+For any issues/questions regarding the paper or reproducing the results, please contact me.   
+Mohamed Ragab    
+School of Computer Science and Engineering (SCSE),   
+Nanyang Technological University (NTU), Singapore.   
+Email: mohamedr002{at}e.ntu.edu.sg   
